@@ -1,0 +1,22 @@
+#!/usr/bin/perl -w
+use strict;
+
+use Email::Address;
+
+my $SAVE_HOOKS_FILE = shift or die "Usage: $0 <save-hooks-file>\n";
+my $HEADER = 'From';
+my $PATTERN = '~f';
+
+my $ADDRESS;
+while (<>) {
+    next unless /^$HEADER:\s*(.*)/;
+    $ADDRESS = $1;
+    last;
+}
+
+
+my ($address) = Email::Address->parse($ADDRESS);
+
+open my $fh, '>>', $SAVE_HOOKS_FILE or die "Can't open $SAVE_HOOKS_FILE for appending: $!";
+print $fh "save-hook '$PATTERN " . $address->address . "'  =" . $address->user . "  # " . $address->name . "\n";
+close $fh;

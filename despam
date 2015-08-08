@@ -1,0 +1,19 @@
+#!/bin/bash
+
+FILE=$1
+
+# extract the current subject and remove any [SPAM] tags in the subject line
+OLD_SUBJECT=`formail -c -x Subject < "$FILE"`
+NEW_SUBJECT=`sed 's/\\[SPAM\\]\\s\\?//i' <<< "$OLD_SUBJECT"`
+
+if [ "$OLD_SUBJECT" != "$NEW_SUBJECT" ]; then
+    # put the despammed subject line back in
+    echo "Despammed to $NEW_SUBJECT"
+
+    TEMPFILE=`mktemp`
+    formail -I "Subject:$NEW_SUBJECT" < "$FILE" > "$TEMPFILE"
+
+    if [ -f "$TEMPFILE" ]; then
+	mv "$TEMPFILE" "$FILE"
+    fi
+fi

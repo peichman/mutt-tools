@@ -1,0 +1,17 @@
+#!/usr/bin/perl -w
+use strict;
+
+use Data::ICal::DateTime;
+use Data::ICal;
+
+my $data = eval { local $/; <STDIN>; };
+die "No data" unless $data;
+my $ical = Data::ICal->new(data => $data);
+my @events = grep { $_->ical_entry_type eq "VEVENT" } @{ $ical->entries };
+for my $event (@events) {
+    my $start = $event->start->strftime('%e %b %Y AT %H:%M');
+    my $msg = $event->summary;
+    my $duration = sprintf '%d:%02d', $event->end->subtract_datetime($event->start)->in_units(qw{hours minutes});
+    print "REM $start DURATION $duration MSG $msg\n";
+}
+warn sprintf "Found %d event%s\n", scalar @events, @events == 1 ? '' : 's';

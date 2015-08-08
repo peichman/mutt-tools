@@ -1,0 +1,34 @@
+#!/usr/bin/perl -w
+use strict;
+
+use MIME::Parser;
+use Getopt::Long;
+
+GetOptions(
+    'l|list' => \my $LIST_PARTS,
+);
+
+# for reading encoded email bodies
+my $parser = MIME::Parser->new;
+
+my $MIME_TYPE = shift;
+    
+die "Usage: $0 <MIME type>" unless $MIME_TYPE or $LIST_PARTS;
+
+# create no temporary files
+$parser->tmp_to_core(1);
+$parser->output_to_core(1);
+
+my $entity = $parser->parse(\*STDIN) or die "Unable to parse email message";
+
+if ($LIST_PARTS) {
+    print $_->effective_type . "\n" foreach $entity->parts_DFS;
+    exit;
+}
+
+for my $part (grep { $_->effective_type eq $MIME_TYPE } $entity->parts_DFS) {
+    my $body = $part->bodyhandle->open('r');
+    while (local $_ = $body->getline) {
+        print;
+    }
+}

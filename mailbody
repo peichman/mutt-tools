@@ -1,0 +1,21 @@
+#!/usr/bin/perl -w
+use strict;
+
+use MIME::Parser;
+
+# for reading encoded email bodies
+my $parser = MIME::Parser->new;
+
+# create no temporary files
+$parser->tmp_to_core(1);
+$parser->output_to_core(1);
+
+my $entity = $parser->parse(\*STDIN) or die "Unable to parse email message";
+
+#TODO: more configurable/intelligent selection of parts for multipart messages?
+my $body = $entity->bodyhandle ? $entity->bodyhandle->open('r')
+                               : $entity->parts(0)->bodyhandle->open('r');
+
+while (local $_ = $body->getline) {
+    print;
+}
