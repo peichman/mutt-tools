@@ -13,6 +13,7 @@ my %url_pattern_for = (
     LS    => "http://lasership.com/track/%s",
     FedEx => "http://www.fedex.com/Tracking?tracknumbers=%s",
     UPSMI => "http://www.ups-mi.net/packageID/PackageID.aspx?PID=%s",
+    DHLUS => "http://www.dhl-usa.com/content/us/en/express/tracking.shtml?AWB=%s&brand=DHL"
 );
 
 while (<>) {
@@ -28,15 +29,15 @@ while (<>) {
         # DHL
         print sprintf($url_pattern_for{DHL}, $1), "\n";
         exit;
+    } elsif (/\b(\d{10})\b/) {
+        # DHL US
+        print sprintf($url_pattern_for{DHLUS}, $1), "\n";
+        exit;
     } elsif (/\b(1LS\d{12})\b/ or /\b(BN\d{20})\b/) {
         # LaserShip
         print sprintf($url_pattern_for{LS}, $1), "\n";
         exit;
-    } elsif (/\b(0\d{14})\b/) {
-        # FedEx
-        print sprintf($url_pattern_for{FedEx}, $1), "\n";
-        exit;
-    } elsif (/\b(59\d{10})\b/) {
+    } elsif (/\b(0\d{14})\b/ or /\b(59\d{10})\b/) {
         # FedEx
         print sprintf($url_pattern_for{FedEx}, $1), "\n";
         exit;
