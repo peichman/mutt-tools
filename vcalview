@@ -43,10 +43,10 @@ for my $event (@events) {
     push @duration, "$m minute" . ($h == 1 ? '' : 's') if $m;
     my $duration = join ', ', @duration;
 
-    my $location = join(', ', map { $_->value } @{ $event->property('location') });
+    my $location = format_list($event->property('location'));
 
-    my $organizer = format_person_list($event->property('organizer'));
-    my $attendees = format_person_list($event->property('attendee'));
+    my $organizer = format_list($event->property('organizer'), \&person_to_email);
+    my $attendees = format_list($event->property('attendee'), \&person_to_email);
     # strip extra newlines that Text::Wrapper adds
     chomp for $organizer, $attendees;
 
@@ -69,16 +69,18 @@ for my $event (@events) {
         }
     }
 
-    unless ($SHORT) {
+    unless ($SHORT or !$event->description) {
         (my $body = $event->description) =~ s/^\s*|\s*$//g;
         print "\n$body\n";
     }
 }
 
-sub format_person_list {
+sub format_list {
     my $prop = shift;
+    return '' unless $prop;
+    my $function = shift || sub { $_[0]->value };
     my $separator = shift || ', ';
-    return $wrapper->wrap(join $separator, map { person_to_email($_) } @{ $prop });
+    return $wrapper->wrap(join $separator, map { $function->($_) } @{ $prop });
 }
 
 sub person_to_email {
