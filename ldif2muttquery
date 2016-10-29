@@ -24,17 +24,28 @@ while (!$ldif->eof) {
     next unless $entry;
     my $cn = $entry->get_value('cn');
     for my $email ($entry->get_value('mail')) {
-        push @results, { email => $email, cn => $cn };
+        push @results, {
+            email => $email,
+            cn    => $cn,
+            extra => scalar($entry->get_value('displayName')),
+        };
         $found++;
     }
 }
 if ($found) {
     my $entries = $found == 1 ? 'entry' : 'entries';
     print "Found $found matching $entries\n";
-    print join("\n", map { "$$_{email}\t$$_{cn}" } sort { $a->{cn} cmp $b->{cn} } @results);
+    print join("\n", map { format_result($_) } sort { $a->{cn} cmp $b->{cn} } @results);
 } else {
     print "No entries with mail attributes matching '$query'\n";
     exit 1;
+}
+
+sub format_result {
+    my $entry = shift;
+    my $line = $entry->{email} . "\t" . $entry->{cn};
+    $line .= "\t" . $entry->{extra} if $entry->{extra};
+    return $line;
 }
 
 =head1 SEE ALSO
