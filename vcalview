@@ -22,7 +22,14 @@ my $wrapper = Text::Wrapper->new(
 );
 
 my $pattern = '%a, %B %e, %Y, %l:%M%P';
-my $ical = Data::ICal->new(filename => $FILENAME);
+my $ical;
+if ($FILENAME) {
+    $ical = Data::ICal->new(filename => $FILENAME);
+} else {
+    my $data = eval { local $/; <STDIN>; };
+    die "No data" unless $data;
+    $ical = Data::ICal->new(data => $data);
+}
 my @events = grep { $_->ical_entry_type eq "VEVENT" } @{ $ical->entries };
 for my $event (@events) {
     my $summary = $event->summary;
