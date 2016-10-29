@@ -1,0 +1,83 @@
+#!/usr/bin/perl -w
+use strict;
+
+use Data::ICal::DateTime;
+use Data::ICal;
+use Term::ReadKey;
+use Text::Wrapper;
+use Getopt::Long;
+use Term::ANSIColor qw{:constants};
+
+GetOptions(
+    'short|summary|s' => \my $SHORT,
+    'color|colour|c'  => \my $FORCE_COLOR,
+);
+
+my $FILENAME = shift;
+my ($COLUMNS) = GetTerminalSize();
+my $INDENT = 11;
+my $wrapper = Text::Wrapper->new(
+    columns => $COLUMNS - $INDENT,
+    bodyStart => ' ' x $INDENT,
+);
+
+my $pattern = '%a, %B %e, %Y, %l:%M%P';
+my $ical = Data::ICal->new(filename => $FILENAME);
+my @events = grep { $_->ical_entry_type eq "VEVENT" } @{ $ical->entries };
+for my $event (@events) {
+    my $summary = $event->summary;
+    my ($start, $end) = map { $_->strftime($pattern) } ($event->start, $event->end);
+    s/  +/ /g for $start, $end;
+    my ($d, $h, $m) = $event->end->subtract_datetime($event->start)->in_units(qw{days hours minutes});
+    
+    my @duration;
+    push @duration, "$d day" . ($d == 1 ? '' : 's') if $d;
+    push @duration, "$h hour" . ($h == 1 ? '' : 's') if $h;
+    push @duration, "$m minute" . ($h == 1 ? '' : 's') if $m;
+    my $duration = join ', ', @duration;
+
+    my $location = join(', ', map { $_->value } @{ $event->property('location') });
+
+    my $organizer = format_person_list($event->property('organizer'));
+    my $attendees = format_person_list($event->property('attendee'));
+    # strip extra newlines that Text::Wrapper adds
+    chomp for $organizer, $attendees;
+
+    my @headers = (
+        [Summary   => $summary],
+        [Start     => $start],
+        [End       => $end],
+        [Duration  => $duration],
+        [Location  => $location],
+        [Organizer => $organizer],
+        [Attendees => $attendees],
+    );
+    for my $header (@headers) {
+        if ($FORCE_COLOR || -t STDOUT) {
+            print BOLD, BLUE, sprintf '%9s: ', $header->[0];
+            print BOLD, WHITE, $header->[1] . "\n";
+            print RESET;
+        } else {
+            printf "%9s: %s\n", @{ $header };
+        }
+    }
+
+    unless ($SHORT) {
+        (my $body = $event->description) =~ s/^\s*|\s*$//g;
+        print "\n$body\n";
+    }
+}
+
+sub format_person_list {
+    my $prop = shift;
+    my $separator = shift || ', ';
+    return $wrapper->wrap(join $separator, map { person_to_email($_) } @{ $prop });
+}
+
+sub person_to_email {
+    my $prop = shift;
+    my $cn = $prop->parameters->{CN};
+    my $email = $prop->value;
+    $email =~ s/^mailto://gi;
+    return "$cn <$email>";
+}
