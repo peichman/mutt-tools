@@ -48,7 +48,7 @@ for my $event (@events) {
     my $organizer = format_list($event->property('organizer'), \&person_to_email);
     my $attendees = format_list($event->property('attendee'), \&person_to_email);
     # strip extra newlines that Text::Wrapper adds
-    chomp for $organizer, $attendees;
+    chomp for $organizer, $attendees, $location;
 
     my @headers = (
         [Summary   => $summary],
