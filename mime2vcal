@@ -1,0 +1,92 @@
+#!/usr/bin/perl -w
+use strict;
+
+use MIME::Parser;
+use Data::ICal;
+use Data::ICal::Entry::Event;
+use Date::ICal;
+use Getopt::Long;
+use DateTime::Format::Alami::EN;
+use DateTime::Format::Natural;
+use DateTime::Format::ICal;
+use Text::Header;
+use Email::Address;
+use File::Temp qw{tempfile};
+
+GetOptions(
+    'output|o=s'    => \my $OUTPUT_FILE,
+    'mutt-attach|m' => \my $MUTT_ATTACH,
+);
+
+my $TIME_ZONE = 'America/New_York';
+
+# get an email (really just the user-editable headers plus the plain text body)
+my $FILE = shift;
+open my $fh, '<', $FILE or die "$!";
+
+my $mime = MIME::Parser->new;
+# create no temporary files
+$mime->tmp_to_core(1);
+$mime->output_to_core(1);
+
+my $entity = $mime->parse($fh);
+close $fh;
+
+# extract info from the email that will be used to populate the vCal event
+my $head = $entity->head;
+my $subject = $head->get('Subject') || $head->get('Summary');
+my $from = $head->get('From') || $head->get('Organizer');
+my $to = $head->get('To') || $head->get('Attendees');
+my ($organizer) = Email::Address->parse($from);
+my @attendees = Email::Address->parse($to);
+my $location = $head->get('Location');
+# TODO: strip signature?
+my $description = $entity->bodyhandle->as_string;
+my $parser = DateTime::Format::Natural->new(
+    prefer_future => 1,
+    time_zone     => $TIME_ZONE,
+);
+my $start = $parser->parse_datetime($head->get('Start'));
+my $duration = DateTime::Format::Alami::EN->parse_datetime_duration($head->get('Duration'));
+my $end = $start->clone->add_duration($duration);
+
+my $calendar = Data::ICal->new;
+my $vevent = Data::ICal::Entry::Event->new();
+$vevent->add_properties(
+    summary     => $subject,
+    dtstart     => DateTime::Format::ICal->format_datetime($start),
+    dtend       => DateTime::Format::ICal->format_datetime($end),
+    description => $description,
+    location    => $location,
+    organizer   => $organizer ? email_to_person($organizer) : undef,
+);
+for my $attendee (@attendees) {
+    $vevent->add_property(attendee => email_to_person($attendee));
+}
+
+$calendar->add_entry($vevent);
+
+my ($ics_fh, $ics_filename);
+if ($OUTPUT_FILE) {
+    $ics_filename = $OUTPUT_FILE;
+    open $ics_fh, '>', $ics_filename;
+} else {
+    # write the vCal file to a temporary file
+    ($ics_fh, $ics_filename) = tempfile('appt-XXXXXXXX', SUFFIX => '.ics');
+}
+print $ics_fh $calendar->as_string;
+close $ics_fh;
+
+if ($MUTT_ATTACH) {
+    # use mutt's "Attach:" pseudo-header to attach it to the original message
+    $head->add(Attach => $ics_filename);
+
+    open my $out_fh, '>', $FILE;
+    $entity->print($out_fh);
+    close $out_fh;
+}
+
+sub email_to_person {
+    my $email = shift;
+    return [ 'mailto:' . $email->address, { CN => ($email->phrase || $email->address) } ];
+}
