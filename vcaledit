@@ -1,0 +1,26 @@
+#!/bin/bash
+
+OUTFILE=$1
+TEMPFILE=$(mktemp)
+
+if [ -s "$OUTFILE" ]; then
+    vcalview --rfc822 "$OUTFILE" >"$TEMPFILE"
+else
+    cat >"$TEMPFILE" <<END
+Summary: 
+Start: 
+Duration: 
+Location: 
+Organizer: 
+Attendees: 
+
+END
+fi
+
+vim "$TEMPFILE"
+
+if [ -s "$TEMPFILE" ]; then
+    mime2vcal "$TEMPFILE" -o "$OUTFILE"
+fi
+
+rm "$TEMPFILE"

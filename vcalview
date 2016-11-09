@@ -11,6 +11,7 @@ use Term::ANSIColor qw{:constants};
 GetOptions(
     'short|summary|s' => \my $SHORT,
     'color|colour|c'  => \my $FORCE_COLOR,
+    'rfc822|r'        => \my $RFC822,
 );
 
 my $FILENAME = shift;
@@ -21,7 +22,7 @@ my $wrapper = Text::Wrapper->new(
     bodyStart => ' ' x $INDENT,
 );
 
-my $pattern = '%a, %B %e, %Y, %l:%M%P';
+my $pattern = $RFC822 ? '%Y-%m-%d %H:%M' : '%a, %B %e, %Y, %l:%M%P';
 my $ical;
 if ($FILENAME) {
     $ical = Data::ICal->new(filename => $FILENAME);
@@ -48,7 +49,7 @@ for my $event (@events) {
     my $organizer = format_list($event->property('organizer'), \&person_to_email);
     my $attendees = format_list($event->property('attendee'), \&person_to_email);
     # strip extra newlines that Text::Wrapper adds
-    chomp for $organizer, $attendees, $location;
+    chomp for $summary, $organizer, $attendees, $location;
 
     my @headers = (
         [Summary   => $summary],
@@ -60,7 +61,9 @@ for my $event (@events) {
         [Attendees => $attendees],
     );
     for my $header (@headers) {
-        if ($FORCE_COLOR || -t STDOUT) {
+        if ($RFC822) {
+            printf "%s: %s\n", @{ $header };
+        } elsif ($FORCE_COLOR || -t STDOUT) {
             print BOLD, BLUE, sprintf '%9s: ', $header->[0];
             print BOLD, WHITE, $header->[1] . "\n";
             print RESET;
