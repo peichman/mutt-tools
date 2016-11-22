@@ -6,9 +6,7 @@ use Email::Address;
 use Getopt::Long;
 
 GetOptions(
-    'verbose|v'  => \my $VERBOSE,
-    'template=s' => \my $TEMPLATE,
-    'D=s'        => \my %TEMPLATE_VARS,
+    'verbose|v' => \my $VERBOSE,
 );
 
 # for reading encoded email bodies
@@ -23,19 +21,14 @@ my $entity = $parser->parse(\*STDIN);
 my $head = $entity->head;
 
 for my $email (Email::Address->parse($head->get($HEADER))) {
-    if ($TEMPLATE) {
-        require Template;
-        my $template = Template->new({ ABSOLUTE => 1 });
-        $template->process($TEMPLATE, { %TEMPLATE_VARS, email => $email })
-            or die $template->error();
-    } else {
-        print $VERBOSE ? $email->format : $email->address;
-        print "\n";
-    }
+    (my $phrase = $email->phrase) =~ s/\n/ /g;
+    $email->phrase($phrase);
+    print $VERBOSE ? $email->format : $email->address;
+    print "\n";
 }
 
 # to use this to extract and add to LDAP
-# extract --template ~/projects/mutt-tools/new.ldif -D basedn=... | ldapvi --ldif --in --add
+# extract -v | address2ldif -D basedn=... | ldapvi --in --add
 
 # to use this to extract and edit an LDAP entry by email address
 # ldapvi "(mail=$(extract))"

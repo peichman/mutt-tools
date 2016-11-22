@@ -1,0 +1,30 @@
+#!/usr/bin/perl -w
+use strict;
+
+use Email::Address;
+use Template;
+use Getopt::Long;
+
+GetOptions(
+    'D=s' => \my %TEMPLATE_VARS,
+);
+
+my $template = <<'END';
+
+dn: cn=[% email.name %],[% basedn %]
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: [% email.name %]
+givenName: [% email.name.remove('\s.*$') %]
+sn: [% email.name.remove('^.*\s') %]
+mail: [% email.address %]
+END
+
+my $tt = Template->new;
+while (<>) {
+    my ($email) = Email::Address->parse($_);
+    $tt->process(\$template, { %TEMPLATE_VARS, email => $email }) or die $tt->error();
+}
+
