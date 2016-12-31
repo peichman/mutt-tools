@@ -1,0 +1,7 @@
+#!/bin/bash
+
+AGE=${1:-0}
+for message in $(find $HOME/Mail/Junk/{new,cur} -type f -mtime "$AGE"); do
+    bogofilter -I "$message" -s
+    rm "$message"
+done
