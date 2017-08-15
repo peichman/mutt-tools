@@ -1,6 +1,12 @@
 #!/usr/bin/perl -w
 use strict;
 
+use Getopt::Long;
+
+GetOptions(
+    'email|e' => \my $READ_FROM_EMAIL,
+);
+
 # to use with arbitrary email messages, should first pipe
 # through mailbody first:
 # $ mailbody < email-message | trackingnum
@@ -16,36 +22,43 @@ my %url_pattern_for = (
     DHLUS => "http://www.dhl-usa.com/content/us/en/express/tracking.shtml?AWB=%s&brand=DHL"
 );
 
-while (<>) {
-    if (/\b(9\d{21})\b/) {
-        # USPS
-        print sprintf($url_pattern_for{USPS}, $1), "\n";
-        exit;
-    } elsif (/\b(1Z[A-Z0-9]{16})\b/) {
-        # UPS
-        print sprintf($url_pattern_for{UPS}, $1), "\n";
-        exit;
-    } elsif (/\b(\d{20})\b/) {
-        # DHL
-        print sprintf($url_pattern_for{DHL}, $1), "\n";
-        exit;
-    } elsif (/\b(\d{10})\b/) {
-        # DHL US
-        print sprintf($url_pattern_for{DHLUS}, $1), "\n";
-        exit;
-    } elsif (/\b(1LS\d{12})\b/ or /\b(BN\d{20})\b/) {
-        # LaserShip
-        print sprintf($url_pattern_for{LS}, $1), "\n";
-        exit;
-    } elsif (/\b(0\d{14})\b/ or /\b(59\d{10})\b/) {
-        # FedEx
-        print sprintf($url_pattern_for{FedEx}, $1), "\n";
-        exit;
-    } elsif (/\b(\d{30})\b/ or /\b(\d{26})\b/) {
-        # UPS Mail Innovations
-        print sprintf($url_pattern_for{UPSMI}, $1), "\n";
-        exit;
+if ($READ_FROM_EMAIL) {
+    while (<>) {
+        if (/\b(9\d{21})\b/) {
+            # USPS
+            print sprintf($url_pattern_for{USPS}, $1), "\n";
+            exit;
+        } elsif (/\b(1Z[A-Z0-9]{16})\b/) {
+            # UPS
+            print sprintf($url_pattern_for{UPS}, $1), "\n";
+            exit;
+        } elsif (/\b(\d{20})\b/) {
+            # DHL
+            print sprintf($url_pattern_for{DHL}, $1), "\n";
+            exit;
+        } elsif (/\b(\d{10})\b/) {
+            # DHL US
+            print sprintf($url_pattern_for{DHLUS}, $1), "\n";
+            exit;
+        } elsif (/\b(1LS\d{12})\b/ or /\b(BN\d{20})\b/) {
+            # LaserShip
+            print sprintf($url_pattern_for{LS}, $1), "\n";
+            exit;
+        } elsif (/\b(0\d{14})\b/ or /\b(59\d{10})\b/) {
+            # FedEx
+            print sprintf($url_pattern_for{FedEx}, $1), "\n";
+            exit;
+        } elsif (/\b(\d{30})\b/ or /\b(\d{26})\b/) {
+            # UPS Mail Innovations
+            print sprintf($url_pattern_for{UPSMI}, $1), "\n";
+            exit;
+        }
     }
+
+    die "No tracking numbers found.\n";
 }
 
-warn "No tracking numbers found.\n";
+my ($CARRIER, $NUMBER) = @ARGV;
+die "Usage: $0 <carrier> <number>\n" unless $CARRIER && $NUMBER;
+my $pattern = $url_pattern_for{$CARRIER} or die "Unknown carrier $CARRIER\n";
+print sprintf($pattern, $NUMBER), "\n";
