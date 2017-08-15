@@ -26,8 +26,7 @@ while (!$ldif->eof) {
     for my $email ($entry->get_value('mail')) {
         push @results, {
             email => $email,
-            cn    => $cn,
-            extra => scalar($entry->get_value('displayName')),
+            name  => $cn,
         };
         $found++;
     }
@@ -35,7 +34,7 @@ while (!$ldif->eof) {
 if ($found) {
     my $entries = $found == 1 ? 'entry' : 'entries';
     print "Found $found matching $entries\n";
-    print join("\n", map { format_result($_) } sort { $a->{cn} cmp $b->{cn} } @results);
+    print join("\n", map { format_result($_) } sort { $a->{name} cmp $b->{name} } @results);
 } else {
     print "No entries with mail attributes matching '$query'\n";
     exit 1;
@@ -43,7 +42,7 @@ if ($found) {
 
 sub format_result {
     my $entry = shift;
-    my $line = $entry->{email} . "\t" . $entry->{cn};
+    my $line = $entry->{email} . "\t" . $entry->{name};
     $line .= "\t" . $entry->{extra} if $entry->{extra};
     return $line;
 }
