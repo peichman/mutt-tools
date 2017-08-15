@@ -25,6 +25,11 @@ END
 my $tt = Template->new;
 while (<>) {
     my ($email) = Email::Address->parse($_);
+    # flip names that come in as "lastName, firstName"
+    # very common on corporate or institutional networks
+    if ($email->name =~ /^([^,]*),\s*(.*)$/) {
+        $email->phrase("$2 $1");
+    }
     $tt->process(\$template, { %TEMPLATE_VARS, email => $email }) or die $tt->error();
 }
 
